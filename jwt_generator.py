@@ -50,9 +50,9 @@ def push_to_git():
 
 def get_repo_and_filename(region):
     """Determine repository and filename based on region"""
-    if region == "IND":
+    if region in {"IND", "NA", "OTHER"}:
         return "token_ind.json"
-    elif region in {"BR", "US", "SAC", "NA"}:
+    elif region in {"BR", "US", "SAC"}:
         return "token_br.json"
     else:
         return "token_bd.json"
