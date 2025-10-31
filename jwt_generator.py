@@ -86,55 +86,57 @@ async def process_account_with_retry(client, index, uid, password, max_retries=2
                     "uid": uid,
                     "password": password,
                     "token": token_data["token"],
-                    "notiRegion": token_data.get("notiRegion", "")
+                    "server": token_data.get("server", ""),  # changed
+                    "status": token_data.get("status", ""),  # optional
                 }
         except Exception as e:
             print(f"Attempt {attempt + 1} failed for UID #{index + 1}: {str(e)}")
 
-        if attempt < max_retries - 1:  
-            print(f"⏳ UID #{index + 1} {uid} - Retry after 1 minute...")  
-            await asyncio.sleep(60)  
+        if attempt < max_retries - 1:
+            print(f"⏳ UID #{index + 1} {uid} - Retry after 1 minute...")
+            await asyncio.sleep(60)
 
-    return {  
-        "serial": index + 1,  
-        "uid": uid,  
-        "password": password,  
-        "token": None,  
-        "notiRegion": ""  
+    return {
+        "serial": index + 1,
+        "uid": uid,
+        "password": password,
+        "token": None,
+        "server": "",  # changed
+        "status": "",
     }
+
 
 async def generate_tokens_for_region(region):
     start_time = time.time()
+    input_file = f"uid_{region}.json"
+    if not os.path.exists(input_file):
+        print(f"⚠️ {input_file} not found.")
+        return
 
-    input_file = f"uid_{region}.json"  
-    if not os.path.exists(input_file):  
-        print(f"⚠️ {input_file} not found.")  
-        return  
+    with open(input_file, "r") as f:
+        accounts = json.load(f)
 
-    with open(input_file, "r") as f:  
-        accounts = json.load(f)  
+    total_accounts = len(accounts)
+    print(f"🚀 Starting Token Generation for {region} Region using API...\n")
 
-    total_accounts = len(accounts)  
-    print(f"🚀 Starting Token Generation for {region} Region using API...\n")  
+    region_tokens = []
+    failed_serials = []
+    failed_values = []
 
-    region_tokens = []  
-    failed_serials = []  
-    failed_values = []  
-
-    async with httpx.AsyncClient() as client:  
+    async with httpx.AsyncClient() as client:
         tasks = []
         for index, account in enumerate(accounts):
             tasks.append(process_account_with_retry(client, index, account["uid"], account["password"]))
-        
+
         results = await asyncio.gather(*tasks)
-        
+
         for result in results:
             serial = result["serial"]
             uid = result["uid"]
             token = result["token"]
-            token_region = result.get("notiRegion", "")
+            token_server = result.get("server", "")  # changed
 
-            if token and token_region == region:
+            if token and token_server == region:
                 region_tokens.append({"uid": uid, "token": token})
                 print(f"✅ UID #{serial} {uid} - Token saved for {region}")
             else:
@@ -143,25 +145,25 @@ async def generate_tokens_for_region(region):
                 print(f"❌ UID #{serial} {uid} - Token generation failed for {region}")
 
     output_file = get_repo_and_filename(region)
-    with open(output_file, "w") as f:  
-        json.dump(region_tokens, f, indent=2)  
+    with open(output_file, "w") as f:
+        json.dump(region_tokens, f, indent=2)
 
     total_time = time.time() - start_time
     minutes = int(total_time // 60)
     seconds = int(total_time % 60)
 
-    summary = (  
-        f"✅ *{region} Token Generation Complete*\n\n"  
-        f"🔹 *Total Tokens:* {len(region_tokens)}\n"  
-        f"🔢 *Total Accounts:* {total_accounts}\n"  
-        f"❌ *Failed UIDs:* {len(failed_serials)}\n"  
-        f"🔸 *Failed UID Serials:* {', '.join(map(str, failed_serials)) or 'None'}\n"  
-        f"🔸 *Failed UID Values:* {', '.join(map(str, failed_values)) or 'None'}\n"  
-        f"⏱️ *Time Taken:* {minutes} minutes {seconds} seconds\n"  
-    )  
-    send_telegram_message(summary)  
+    summary = (
+        f"✅ *{region} Token Generation Complete*\n\n"
+        f"🔹 *Total Tokens:* {len(region_tokens)}\n"
+        f"🔢 *Total Accounts:* {total_accounts}\n"
+        f"❌ *Failed UIDs:* {len(failed_serials)}\n"
+        f"🔸 *Failed UID Serials:* {', '.join(map(str, failed_serials)) or 'None'}\n"
+        f"🔸 *Failed UID Values:* {', '.join(map(str, failed_values)) or 'None'}\n"
+        f"⏱️ *Time Taken:* {minutes} minutes {seconds} seconds\n"
+    )
+
+    send_telegram_message(summary)
     print(summary)
-    
     return len(region_tokens)
 
 # --- Run ---
