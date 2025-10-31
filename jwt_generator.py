@@ -13,7 +13,7 @@ USERAGENT = "Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)"
 TELEGRAM_TOKEN = "8319148575:AAELxKaDczjznXqk3Xu3b58LDY8zrCrgMIo"
 TELEGRAM_CHAT_ID = 7968668273
 BRANCH_NAME = "main"
-JWT_API_URL = "https://jetdeco.vercel.app/token"
+JWT_API_URL = "https://jwt-gen-updated-by-wotax.vercel.app/token"
 
 # --- Telegram ---
 def send_telegram_message(message):
